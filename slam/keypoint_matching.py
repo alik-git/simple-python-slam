@@ -1,0 +1,84 @@
+import cv2
+import numpy as np
+import open3d as o3d
+
+from utils.geometry import keypoints_to_3D, transform_points_to_global
+from utils.optional_rerun_wrapper import orr_log_matches
+
+def get_keypoint_pointcloud(keypoints, depth_image, curr_pose, intrinsics):
+    keypoint_3d_points = keypoints_to_3D(keypoints, depth_image, intrinsics)
+    transformed_keypoint_3d_points = transform_points_to_global(keypoint_3d_points, curr_pose)
+    
+    keypoint_pointcloud = o3d.geometry.PointCloud()
+    keypoint_pointcloud.points = o3d.utility.Vector3dVector(transformed_keypoint_3d_points)
+    keypoint_pointcloud.colors = o3d.utility.Vector3dVector(np.tile(np.array([1, 0, 0]), (keypoint_3d_points.shape[0], 1)))  # Red color for keypoints
+    return keypoint_pointcloud
+
+def get_matches(
+    frame_idx,
+    keypoints,
+    descriptors,
+    opencv_image,
+    prev_keypoints,
+    prev_descriptors,
+    prev_opencv_image,
+):
+        # if not (prev_keypoints is not None and prev_descriptors is not None and prev_opencv_image is not None):
+        if prev_keypoints is None:
+            return None
+        
+        # Using FLANN matcher instead of brute-force
+        flann_index = 6  # Index parameters for LSH
+        index_params = dict(algorithm=flann_index, table_number=6, key_size=12, multi_probe_level=1)
+        search_params = dict(checks=50)  # Search parameters
+
+        flann = cv2.FlannBasedMatcher(index_params, search_params)
+        matches = flann.knnMatch(prev_descriptors, descriptors, k=2)
+
+        # Apply Lowe's ratio test
+        good_matches = []
+        for item in matches:
+            if len(item) < 2:
+                continue
+            m, n = item
+            if m.distance < 0.75 * n.distance:  # Lowe's ratio test
+                good_matches.append(m)
+                
+        matches = good_matches
+                
+        # # Initialize the Matcher for matching the keypoints and then match the keypoints
+        # matcher = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
+        # matches = matcher.match(prev_descriptors, descriptors)
+        
+        orr_log_matches(prev_opencv_image, prev_keypoints, opencv_image, keypoints, matches, frame_idx)
+        
+        return matches
+    
+
+def estimate_pose_from_matches(matches, prev_keypoints, keypoints, intrinsics):
+    if matches is None:
+        return None, None, None
+    if len(matches) < 5:
+        return None, None, None
+    
+    object_points = np.array([prev_keypoints[m.queryIdx].pt for m in matches], dtype=np.float32)
+    image_points = np.array([keypoints[m.trainIdx].pt for m in matches], dtype=np.float32)
+    
+    E, mask = cv2.findEssentialMat(object_points, image_points, intrinsics, method=cv2.RANSAC, prob=0.999, threshold=1.0)
+    _, R, tvec, mask = cv2.recoverPose(E, object_points, image_points, intrinsics)
+    
+    return R, tvec, mask
+
+def build_pose_matrix(R, tvec):
+    if R is None or tvec is None:
+        return None
+    pose = np.eye(4)
+    pose[:3, :3] = R
+    pose[:3, 3] = tvec.squeeze()
+    return pose
+
+
+def estimate_pose_from_essential_matrix(object_points, image_points, intrinsics):
+    E, mask = cv2.findEssentialMat(object_points, image_points, intrinsics, method=cv2.RANSAC, prob=0.999, threshold=1.0)
+    _, R, tvec, mask = cv2.recoverPose(E, object_points, image_points, intrinsics)
+    return R, tvec, mask

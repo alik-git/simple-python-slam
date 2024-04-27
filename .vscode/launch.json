@@ -1,0 +1,38 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Current File",
+            "type": "debugpy",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "program": "${file}",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Run SLAM",
+            "type": "debugpy",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "program": "${workspaceFolder}/slam/run_slam.py",
+            "console": "integratedTerminal",
+            "justMyCode": false
+        },
+        {
+            "name": "Run SLAM w Profiler",
+            "type": "debugpy",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "module": "cProfile",
+            "args": [
+                "-o", "${workspaceFolder}/slam/run_slam.prof", "${workspaceFolder}/slam/run_slam.py"
+            ],
+            // "program": "${workspaceFolder}/slam/run_slam.py",
+            "console": "integratedTerminal",
+            "justMyCode": false
+        }
+    ]
+}
