@@ -54,6 +54,16 @@ def get_matches(
         
         return matches
     
+def estimate_pose_pnp_ransac(matches, keypoints1, keypoints2, intrinsics):
+    if matches is None:
+        return None, None, None
+    if len(matches) < 5:
+        return None, None, None
+    object_points = np.array([keypoints1[m.queryIdx].pt for m in matches], dtype=np.float32)
+    image_points = np.array([keypoints2[m.trainIdx].pt for m in matches], dtype=np.float32)
+    _, R, t, mask = cv2.solvePnPRansac(object_points, image_points, intrinsics, None)
+    return R, t, mask
+    
 
 def estimate_pose_from_matches(matches, prev_keypoints, keypoints, intrinsics):
     if matches is None:
@@ -82,3 +92,43 @@ def estimate_pose_from_essential_matrix(object_points, image_points, intrinsics)
     E, mask = cv2.findEssentialMat(object_points, image_points, intrinsics, method=cv2.RANSAC, prob=0.999, threshold=1.0)
     _, R, tvec, mask = cv2.recoverPose(E, object_points, image_points, intrinsics)
     return R, tvec, mask
+
+class View:
+    def __init__(self, image, keypoints, descriptors, name):
+        self.image = image
+        self.keypoints = keypoints
+        self.descriptors = descriptors
+        self.name = name
+        self.R = None
+        self.t = None
+        
+def detect_features(image):
+    # Assuming ORB here, but can be SIFT, SURF, etc.
+    orb = cv2.ORB_create()
+    keypoints, descriptors = orb.detectAndCompute(image, None)
+    return keypoints, descriptors
+
+def match_features(descriptors1, descriptors2):
+    # Create a BFMatcher or FLANN based matcher here
+    bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
+    matches = bf.match(descriptors1, descriptors2)
+    matches = sorted(matches, key=lambda x: x.distance)
+    return matches
+        
+def create_views_and_matches(images):
+    views = []
+    matches = {}  # Dictionary to hold matches between pairs of images
+
+    for i, img in enumerate(images):
+        # Here you should detect keypoints and compute descriptors
+        keypoints, descriptors = detect_features(img)
+        view = View(img, keypoints, descriptors, f"Image_{i}")
+        views.append(view)
+        
+        if i > 0:
+            # Matching current view with the previous view
+            prev_view = views[i-1]
+            match = match_features(prev_view.descriptors, descriptors)
+            matches[(prev_view.name, view.name)] = match
+
+    return views, matches

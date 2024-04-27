@@ -92,25 +92,6 @@ def orr_log_camera(intrinsics, curr_pose, prev_pose, img_width, img_height, fram
     prev_pose = curr_pose
     return prev_pose
 
-# def orr_log_estimated_camera(estimated_pose, frame_idx):
-#     translation = estimated_pose[:3, 3].tolist()
-#     quaternion = rotation_matrix_to_quaternion(estimated_pose[:3, :3])
-    
-#     orr.log(
-#         "world/estimated_camera",
-#         orr.Transform3D(translation=translation, rotation=quaternion, from_parent=False)
-#     )
-    
-#     if frame_idx > 0:
-#         prev_translation = estimated_poses[frame_idx - 1][:3, 3].tolist()
-#         orr.log(
-#             f"world/estimated_camera_trajectory/{frame_idx}",
-#             orr.LineStrips3D(
-#                 [np.vstack([prev_translation, translation]).tolist()],
-#                 colors=[[0, 0, 255]]  # Blue color for the estimated trajectory line
-#             )
-#         )
-        
 def orr_log_rgb_image(color_path):
     # Log RGB image from the specified path
     color_path = color_path
@@ -166,13 +147,6 @@ def orr_log_orb_keypoints(keypoints, frame_idx):
         orr.Clear(recursive=True)
     )
     
-    # for entity_path in prev_logged_entities:
-    #         if entity_path not in new_logged_entities:
-    #             # print(f"Clearing {entity_path}")
-    #             orr.log(
-    #                 entity_path, 
-    #                 orr.Clear(recursive=True)
-    #             )
     
 def orr_log_depth_image(depth_tensor):
 
