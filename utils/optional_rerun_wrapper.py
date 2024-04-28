@@ -124,28 +124,50 @@ def orr_log_matches(query_img, query_kps, train_img, train_kps, matches, frame_i
         orr.LineStrips2D(lines, colors=[[0, 255, 0] for _ in matches])  # Green lines for matches
     )
     
-def orr_log_orb_keypoints(keypoints, frame_idx):
+def calculate_color(match_count, max_range=30):
+    # Calculate intensity based on match count
+    if match_count >= max_range:
+        return (255, 0, 0)  # Red
+    blue_intensity = max(255 - (match_count / max_range) * 255, 0)
+    red_intensity = min((match_count / max_range) * 255, 255)
+    return (int(red_intensity), 0, int(blue_intensity))
+
+def get_keypoint_colors(keypoints, keypoint_tracker, frame_idx):
+    colors = []
+    for idx, kp in enumerate(keypoints):
+        if idx in keypoint_tracker and keypoint_tracker[idx]['last_seen'] == frame_idx:
+            # match_count = keypoint_tracker[idx]['match_count']
+            match_count = len(keypoint_tracker[idx]['match_chain'])
+            colors.append(calculate_color(match_count))
+        else:
+            colors.append((0, 0, 255))  # Default blue for new or untracked keypoints
+    return colors
+    
+def orr_log_orb_keypoints(keypoints, keypoint_tracker, frame_idx):
     # Extract (x, y) coordinates and sizes of keypoints for visualization
     points = [(kp.pt[0], kp.pt[1]) for kp in keypoints]
     sizes = [kp.size for kp in keypoints]  # Diameter of the meaningful keypoint neighborhood
 
     # Optionally, use the angle or response of keypoints for color coding or other purposes
-    colors = [(255, 0, 0) for _ in keypoints]  # Red color for all keypoints
+    colors = get_keypoint_colors(keypoints, keypoint_tracker, frame_idx)
+    # colors = [(0, 0, 255) for _ in keypoints]  # Red color for all keypoints
 
     # Log keypoints using Points2D
     orr.log(
-        f"world/camera/orb_keypoints/frame_{frame_idx}",
+        # f"world/camera/orb_keypoints/frame_{frame_idx}",
+        f"world/camera/orb_keypoints",
         orr.Points2D(
             positions=points,
             colors=colors,
-            radii=[size / 2 for size in sizes]  # Radius is half the diameter
+            # radii=[size / 2 for size in sizes]  # Radius is half the diameter
         )
     )
     
-    orr.log(
-        f"world/camera/orb_keypoints/frame_{frame_idx -1 }",
-        orr.Clear(recursive=True)
-    )
+    # orr.log(
+    #     # f"world/camera/orb_keypoints/frame_{frame_idx -1 }",
+    #     f"world/camera/orb_keypoints/frame_{frame_idx -1 }",
+    #     orr.Clear(recursive=True)
+    # )
     
     
 def orr_log_depth_image(depth_tensor):

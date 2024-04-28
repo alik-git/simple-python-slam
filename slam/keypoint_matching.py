@@ -11,7 +11,7 @@ def get_keypoint_pointcloud(keypoints, depth_image, curr_pose, intrinsics):
     
     keypoint_pointcloud = o3d.geometry.PointCloud()
     keypoint_pointcloud.points = o3d.utility.Vector3dVector(transformed_keypoint_3d_points)
-    keypoint_pointcloud.colors = o3d.utility.Vector3dVector(np.tile(np.array([1, 0, 0]), (keypoint_3d_points.shape[0], 1)))  # Red color for keypoints
+    keypoint_pointcloud.colors = o3d.utility.Vector3dVector(np.tile(np.array([1, 1, 1]), (keypoint_3d_points.shape[0], 1)))  # Blue color for keypoints
     return keypoint_pointcloud
 
 def get_matches(
@@ -54,6 +54,49 @@ def get_matches(
         
         return matches
     
+next_keypoint_id = 0
+    
+def update_keypoint_tracker(matches, current_frame, keypoint_tracker, current_keypoints):
+    new_tracker = {}
+    
+    if not matches:
+        return new_tracker
+    
+    for match in matches:
+        query_idx = match.queryIdx  # Index in current keypoints list
+        train_idx = match.trainIdx  # Index in previous keypoints list
+        
+        if train_idx in keypoint_tracker:
+            # Continue the existing match chain from the previous keypoint
+            match_chain = keypoint_tracker[train_idx]['match_chain'][:]
+            match_chain.append((current_frame, query_idx))
+            match_count = len(match_chain)
+        else:
+            # Start a new match chain for unmatched keypoints
+            match_chain = [(current_frame, query_idx)]
+            match_count = 1
+        
+        new_tracker[query_idx] = {
+            'id': keypoint_tracker[train_idx]['id'] if train_idx in keypoint_tracker else query_idx,
+            'origin_frame': keypoint_tracker[train_idx]['origin_frame'] if train_idx in keypoint_tracker else current_frame,
+            'match_count': match_count,
+            'last_seen': current_frame,
+            'match_chain': match_chain
+        }
+    
+    # Ensure new keypoints that were not matched are also tracked
+    for idx, kp in enumerate(current_keypoints):
+        if idx not in new_tracker:
+            new_tracker[idx] = {
+                'id': idx,
+                'origin_frame': current_frame,
+                'match_count': 1,
+                'last_seen': current_frame,
+                'match_chain': [(current_frame, idx)]
+            }
+    
+    return new_tracker
+    
 def estimate_pose_pnp_ransac(matches, keypoints1, keypoints2, intrinsics):
     if matches is None:
         return None, None, None
@@ -63,7 +106,8 @@ def estimate_pose_pnp_ransac(matches, keypoints1, keypoints2, intrinsics):
     image_points = np.array([keypoints2[m.trainIdx].pt for m in matches], dtype=np.float32)
     _, R, t, mask = cv2.solvePnPRansac(object_points, image_points, intrinsics, None)
     return R, t, mask
-    
+
+
 
 def estimate_pose_from_matches(matches, prev_keypoints, keypoints, intrinsics):
     if matches is None:

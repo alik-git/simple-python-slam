@@ -53,6 +53,8 @@ def main(cfg: DictConfig):
     prev_descriptors = None
     prev_opencv_image = None  # Store the previous frame's image for visualization
     prev_estimated_pose = None
+
+    keypoint_tracker = {}
     
 
     for frame_idx, obs in enumerate(dataset):
@@ -69,7 +71,7 @@ def main(cfg: DictConfig):
         # if frame_idx >= 51:
         #     break
         
-        curr_pose, keypoints, descriptors, opencv_image, curr_estimated_pose = process_frame(
+        curr_pose, keypoints, descriptors, opencv_image, curr_estimated_pose, keypoint_tracker = process_frame(
             frame_idx, 
             obs,
             intrinsics,
@@ -79,7 +81,8 @@ def main(cfg: DictConfig):
             prev_keypoints,
             prev_descriptors,
             prev_opencv_image,
-            prev_estimated_pose
+            prev_estimated_pose,
+            keypoint_tracker
         )
         
         prev_pose = curr_pose

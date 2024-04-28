@@ -1,10 +1,11 @@
 
 
+from turtle import update
 import cv2
 import numpy as np
 import open3d as o3d
 
-from slam.keypoint_matching import build_pose_matrix, create_views_and_matches, estimate_pose_from_essential_matrix, estimate_pose_from_matches, estimate_pose_pnp_ransac, get_keypoint_pointcloud, get_matches
+from slam.keypoint_matching import build_pose_matrix, create_views_and_matches, estimate_pose_from_essential_matrix, estimate_pose_from_matches, estimate_pose_pnp_ransac, get_keypoint_pointcloud, get_matches, update_keypoint_tracker
 from utils.geometry import depth_to_local_pointcloud, get_colors_for_pointcloud, keypoints_to_3D, transform_points_to_global
 from utils.optional_rerun_wrapper import orr_log_camera, orr_log_depth_image, orr_log_global_pointcloud, orr_log_matches, orr_log_orb_keypoints, orr_log_rgb_image
 
@@ -19,6 +20,7 @@ def process_frame(
     prev_descriptors,
     prev_opencv_image,
     prev_estimated_pose,
+    keypoint_tracker
     ):
     
     print(f"Processing frame {frame_idx}")
@@ -45,7 +47,7 @@ def process_frame(
     descriptors = None
     curr_estimated_pose = None
     keypoints, descriptors = orb.detectAndCompute(opencv_image, None)
-    orr_log_orb_keypoints(keypoints, frame_idx)
+
     
     # Project keypoints to 3D , another ground truth log for sanity checking
     keypoint_pointcloud = get_keypoint_pointcloud(keypoints, depth_tensor.squeeze().numpy(), curr_pose.numpy(), intrinsics)
@@ -64,9 +66,14 @@ def process_frame(
         prev_opencv_image,
     )
     
+    keypoint_tracker = update_keypoint_tracker(matches, frame_idx, keypoint_tracker, keypoints)
+    
+    orr_log_orb_keypoints(keypoints, keypoint_tracker, frame_idx)
+
+    
     # Estimate the camera pose from the matches
-    R, tvec, mask = estimate_pose_pnp_ransac(matches, prev_keypoints, keypoints, intrinsics)
-    # R, tvec, mask = estimate_pose_from_matches(matches, prev_keypoints, keypoints, intrinsics)
+    # R, tvec, mask = estimate_pose_pnp_ransac(matches, prev_keypoints, keypoints, intrinsics)
+    R, tvec, mask = estimate_pose_from_matches(matches, prev_keypoints, keypoints, intrinsics)
     curr_estimated_pose = build_pose_matrix(R, tvec)
     # Log the estimated camera pose if it exists
     if prev_estimated_pose is not None and curr_estimated_pose is not None:
@@ -88,8 +95,8 @@ def process_frame(
     global_pointcloud += current_pointcloud
 
     # Optionally downsample the point cloud to manage size
-    global_pointcloud = global_pointcloud.voxel_down_sample(voxel_size=0.01)
+    global_pointcloud = global_pointcloud.voxel_down_sample(voxel_size=0.05)
     orr_log_global_pointcloud(global_pointcloud)
     
 
-    return curr_pose, keypoints, descriptors, opencv_image, curr_estimated_pose
+    return curr_pose, keypoints, descriptors, opencv_image, curr_estimated_pose, keypoint_tracker
