@@ -22,6 +22,15 @@
             "justMyCode": false
         },
         {
+            "name": "Run SFM test",
+            "type": "debugpy",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "program": "${workspaceFolder}/slam/sfm_test.py",
+            "console": "integratedTerminal",
+            "justMyCode": false
+        },
+        {
             "name": "Run SLAM w Profiler",
             "type": "debugpy",
             "request": "launch",

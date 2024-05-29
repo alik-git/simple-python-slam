@@ -2,6 +2,6 @@ defaults:
   - dataconfigs: replica
   - dataset_locs: replica_loc
 
-datasets_base_path: /home/kuwajerw/local_data
+datasets_base_path: /home/kuwajerw/new_local_data/new_replica
 
 use_rerun: True

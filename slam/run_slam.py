@@ -41,12 +41,13 @@ def main(cfg: DictConfig):
         [0, cam_params.fy, cam_params.cy],
         [0, 0, 1]
     ])
+    print(f"Line 39, intrinsics: {intrinsics}")
 
     orb = cv2.ORB_create()
     
     global_pointcloud = o3d.geometry.PointCloud()
     
-    # estimated_poses = []
+    estimated_poses = []
 
     prev_pose = None
     prev_keypoints = None
@@ -57,10 +58,13 @@ def main(cfg: DictConfig):
 
     for frame_idx, obs in enumerate(dataset):
         
-        if frame_idx % 10 != 0:
+        if frame_idx % 50 != 0:
             continue
 
         if frame_idx == 10:
+            pass
+        
+        if frame_idx == 200:
             pass
 
         if frame_idx == 50:
@@ -90,6 +94,8 @@ def main(cfg: DictConfig):
         
         if frame_idx <2:
             prev_estimated_pose = curr_pose
+
+        estimated_poses.append(curr_estimated_pose)
 
 
 

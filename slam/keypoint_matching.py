@@ -77,6 +77,14 @@ def estimate_pose_from_matches(matches, prev_keypoints, keypoints, intrinsics):
     E, mask = cv2.findEssentialMat(object_points, image_points, intrinsics, method=cv2.RANSAC, prob=0.999, threshold=1.0)
     _, R, tvec, mask = cv2.recoverPose(E, object_points, image_points, intrinsics)
     
+    def verify_pose_estimation(E, R, tvec, mask):
+        print(f"Essential Matrix:\n{E}")
+        print(f"Rotation Matrix:\n{R}")
+        print(f"Translation Vector:\n{tvec}")
+        print(f"Number of inliers: {np.sum(mask)}")
+
+    verify_pose_estimation(E, R, tvec, mask)
+    
     return R, tvec, mask
 
 def build_pose_matrix(R, tvec):

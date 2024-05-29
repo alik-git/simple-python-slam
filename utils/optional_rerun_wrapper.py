@@ -92,11 +92,11 @@ def orr_log_camera(intrinsics, curr_pose, prev_pose, img_width, img_height, fram
     prev_pose = curr_pose
     return prev_pose
 
-def orr_log_rgb_image(color_path):
+def orr_log_rgb_image(color_path, label="camera"):
     # Log RGB image from the specified path
     color_path = color_path
     orr.log(
-        "world/camera/rgb_image_encoded",
+        f"world/{label}/rgb_image_encoded",
         orr.ImageEncoded(path=str(color_path))
     )
     
@@ -124,7 +124,7 @@ def orr_log_matches(query_img, query_kps, train_img, train_kps, matches, frame_i
         orr.LineStrips2D(lines, colors=[[0, 255, 0] for _ in matches])  # Green lines for matches
     )
     
-def orr_log_orb_keypoints(keypoints, frame_idx):
+def orr_log_orb_keypoints(keypoints, frame_idx, label="camera"):
     # Extract (x, y) coordinates and sizes of keypoints for visualization
     points = [(kp.pt[0], kp.pt[1]) for kp in keypoints]
     sizes = [kp.size for kp in keypoints]  # Diameter of the meaningful keypoint neighborhood
@@ -134,7 +134,7 @@ def orr_log_orb_keypoints(keypoints, frame_idx):
 
     # Log keypoints using Points2D
     orr.log(
-        f"world/camera/orb_keypoints/frame_{frame_idx}",
+        f"world/{label}/orb_keypoints/frame_{frame_idx}",
         orr.Points2D(
             positions=points,
             colors=colors,
@@ -143,12 +143,12 @@ def orr_log_orb_keypoints(keypoints, frame_idx):
     )
     
     orr.log(
-        f"world/camera/orb_keypoints/frame_{frame_idx -1 }",
+        f"world/{label}/orb_keypoints/frame_{frame_idx -1 }",
         orr.Clear(recursive=True)
     )
     
     
-def orr_log_depth_image(depth_tensor):
+def orr_log_depth_image(depth_tensor, label="camera"):
 
     depth_in_meters = depth_tensor.numpy() 
 
@@ -159,7 +159,7 @@ def orr_log_depth_image(depth_tensor):
     # This should really use meter = 1.0, but setting it to that makes it too big
     # I wanna confirm its not me before making an issue on their github
     orr.log(
-        "world/camera/depth",
+        f"world/{label}/depth",
         orr.DepthImage(depth_in_meters , meter=1)
     )
     
@@ -174,6 +174,10 @@ def orr_log_global_pointcloud(o3d_globa_pointcloud, entity_label = "", radii=Non
         # make them ints
         colors = colors.astype(np.uint8)
     orr.log(f"world/pointcloud_{entity_label}", orr.Points3D(positions=global_pointcloud_numpy, colors=colors, radii=radii))
+
+def orr_log_matches_image(match_img_path, frame_idx, label="camera"):
+    orr.log(f"world/matches/matches_curr_frame", orr.ImageEncoded(path=str(match_img_path)))
+    
 
 # def orr_log_annotated_image(color_path, det_exp_vis_path):
 #     # Check if the visualizations exist and log them
