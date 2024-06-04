@@ -1,0 +1,9 @@
+dataset_name: 'record3d'
+camera_params:
+  cx: 720.8687744140625
+  cy: 925.5755615234375
+  fx: 1455.64697265625
+  fy: 1455.64697265625
+  image_height: 1920
+  image_width: 1440
+  png_depth_scale: 1000.0

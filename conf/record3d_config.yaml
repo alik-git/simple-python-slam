@@ -1,0 +1,7 @@
+defaults:
+  - dataconfigs: record3d
+  - dataset_locs: record3d_loc
+
+datasets_base_path: /home/kuwajerw/new_local_data/new_record3d/
+
+use_rerun: True
