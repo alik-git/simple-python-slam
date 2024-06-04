@@ -14,10 +14,9 @@ root_path = str(Path(__file__).resolve().parent.parent)
 if root_path not in sys.path:
     sys.path.append(root_path)
 
-from slam.slam_processor import process_frame
+from slam.slam_processor import process_frame_queue
 from utils.geometry import depth_to_local_pointcloud, get_colors_for_pointcloud, keypoints_to_3D, transform_points_to_global
-from utils.dataset_registry import DatasetRegistry
-from utils.dataloader import SLAMDataset
+from utils.dataloader import SLAMDataset, DatasetRegistry
 from utils.optional_rerun_wrapper import OptionalReRun, orr_log_camera, orr_log_depth_image, orr_log_matches, orr_log_matches_image, orr_log_orb_keypoints, orr_log_global_pointcloud, orr_log_rgb_image
 import numpy as np
 import cv2 

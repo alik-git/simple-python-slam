@@ -1,3 +1,4 @@
+from typing import Optional
 import torch
 from torch.utils.data import Dataset
 from pathlib import Path
@@ -14,7 +15,26 @@ import torchvision.transforms as T
 # if root_path not in sys.path:
 #     sys.path.append(root_path)
 
-from utils.dataset_registry import DatasetRegistry
+class DatasetRegistry:
+    registry = {}
+
+    @classmethod
+    def register(cls, name):
+        def inner_wrapper(wrapped_class):
+            if name in cls.registry:
+                raise ValueError(f"Dataset '{name}' already registered.")
+            cls.registry[name] = wrapped_class
+            print(f"Registered dataset {name}")  # Debugging statement
+            return wrapped_class
+        return inner_wrapper
+
+    @classmethod
+    def get_dataset(cls, config_dict, basedir, sequence, **kwargs):
+        dataset_name = config_dict["dataset_name"].lower()
+        if dataset_name in cls.registry:
+            return cls.registry[dataset_name](config_dict, basedir, sequence, **kwargs)
+        else:
+            raise ValueError(f"Unknown dataset name {dataset_name}")
 
 # # Assuming 'tensor_image' is your image tensor.
 # # If your tensor was on a GPU, first bring it back to CPU memory.
@@ -42,12 +62,14 @@ class SlamObservation:
     """
     Represents a sample in the SLAM dataset.
     """
-    def __init__(self, img_path, pil_image, image_tensor, depth_tensor=None, trajectory=None):
+    def __init__(self, img_path, pil_image, image_tensor, depth_tensor=None, gt_pose=None):
         self.img_path = img_path
         self.pil_image = pil_image
         self.image_tensor = image_tensor
         self.depth_tensor = depth_tensor
-        self.trajectory = trajectory
+        self.gt_pose = gt_pose
+        self.estimated_pose = None
+        self.frame_idx = None
 
 class SLAMDataset(Dataset):
     """
@@ -58,7 +80,7 @@ class SLAMDataset(Dataset):
         self.scene_name = scene_name
         self.has_depth = has_depth
         self.images, self.depth_images = self.load_images()
-        self.trajectory_data = self.load_trajectory_data()
+        self.gt_poses_data = self.load_gt_poses_data()
         self.png_depth_scale = dataconfig["camera_params"]["png_depth_scale"]
         
     def load_images(self):
@@ -67,7 +89,7 @@ class SLAMDataset(Dataset):
         """
         raise NotImplementedError("This method should be implemented by subclasses.")
         
-    def load_trajectory_data(self):
+    def load_gt_poses_data(self):
         """
         Method to load trajectory data. Should be implemented by subclasses.
         """
@@ -75,7 +97,7 @@ class SLAMDataset(Dataset):
 
     def __len__(self):
         """Return the minimum length of images and trajectory data."""
-        return min(len(self.images), len(self.trajectory_data))
+        return min(len(self.images), len(self.gt_poses_data))
 
     def __getitem__(self, idx):
         """Get dataset item by index."""
@@ -92,10 +114,10 @@ class SLAMDataset(Dataset):
         else:
             depth_tensor = None
         
-        trajectory = torch.tensor(self.trajectory_data[idx], dtype=torch.float32)
-        trajectory = trajectory.view(4, 4)  # Reshape trajectory to 4x4 matrix
+        gt_pose = torch.tensor(self.gt_poses_data[idx], dtype=torch.float32)
+        gt_pose = gt_pose.view(4, 4)  # Reshape trajectory to 4x4 matrix
         
-        return SlamObservation(img_path, pil_image, image_tensor, depth_tensor, trajectory)
+        return SlamObservation(img_path, pil_image, image_tensor, depth_tensor, gt_pose)
 
 @DatasetRegistry.register('replica')
 class ReplicaDataset(SLAMDataset):
@@ -115,15 +137,64 @@ class ReplicaDataset(SLAMDataset):
         depth_images = natsorted(glob.glob(f"{input_folder}/depth*.png"))  # Assuming depth images follow a similar naming convention
         return rgb_images, depth_images
 
-    def load_trajectory_data(self):
+    def load_gt_poses_data(self):
         """
         Load trajectory data from a file named 'traj.txt' located in the scene's directory.
         """
-        trajectory_file = self.dataset_path / self.scene_name / 'traj.txt'
-        trajectory_data = np.loadtxt(trajectory_file, dtype=np.float32)
-        return trajectory_data
+        gt_poses_file = self.dataset_path / self.scene_name / 'traj.txt'
+        gt_poses_data = np.loadtxt(gt_poses_file, dtype=np.float32)
+        return gt_poses_data
+    
+@DatasetRegistry.register('record3d')
+class Record3DDataset(SLAMDataset):
+    """
+    A SLAM dataset class for the Record3D dataset.
+    Inherits from SLAMDataset and implements loading methods specific to the Record3D dataset structure.
+    """
+    def __init__(self, dataconfig, dataset_path: Path, scene_name: str):
+        super().__init__(dataconfig, dataset_path, scene_name, has_depth=True)
+
+    def load_images(self):
+        """
+        Loads all RGB image file paths and depth image file paths from the 'rgb' directory and sorts them in natural order.
+        """
+        input_folder = self.dataset_path / self.scene_name / 'rgb'
+        rgb_images = natsorted(list(input_folder.glob("*.jpg")))
+        if not rgb_images:
+            rgb_images = natsorted(list(input_folder.glob("*.png")))
+        
+        # Check if "high_conf_depth" folder exists, if not, use "depth" folder
+        depth_folder = self.dataset_path / self.scene_name / "high_conf_depth"
+        if not depth_folder.exists():
+            depth_folder = self.dataset_path / self.scene_name / "depth"
+        depth_images = natsorted(list(depth_folder.glob("*.png")))
+        
+        return rgb_images, depth_images
+
+    def load_gt_poses_data(self):
+        """
+        Load trajectory data from .npy files located in the 'poses' directory.
+        """
+        gt_poses_path = self.dataset_path / self.scene_name / "poses"
+        gt_posefiles = natsorted(list(gt_poses_path.glob("*.npy")))
+        gt_poses = []
+        
+        P = torch.tensor([
+            [1, 0, 0, 0],
+            [0, -1, 0, 0],
+            [0, 0, -1, 0],
+            [0, 0, 0, 1]
+        ]).float()
+        
+        for gt_posefile in gt_posefiles:
+            c2w = torch.from_numpy(np.load(gt_posefile)).float()
+            _pose = P @ c2w @ P.T
+            gt_poses.append(_pose)
+            
+        return gt_poses
 
 if __name__ == '__main__':
+    pass
     replica_dataset = ReplicaDataset('/home/kuwajerw/local_data/Replica', 'room0')
     k=1
 #     print(f"Dataset length: {len(replica_dataset)}")

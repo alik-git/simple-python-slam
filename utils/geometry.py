@@ -81,6 +81,8 @@ def get_colors_for_pointcloud(rgb_image, depth_image):
     h, w = depth_image.shape
     y_indices, x_indices = np.indices((h, w), dtype=np.int32)
     colors = resized_rgb_image[y_indices, x_indices].reshape(-1, 3)
+    colors = rgb_image.reshape(-1, 3) / 255.0  # Normalize to [0, 1]
+    # colors = 1.0 - colors  # Invert colors
     return colors
 
 def transform_points_to_global(points_3d, pose):
