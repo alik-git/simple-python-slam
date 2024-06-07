@@ -1,4 +1,5 @@
 outputs
 *.pyc
 *.prof
-slam/scratch.py
+spslam/slam/scratch.py
+spslam.egg-info

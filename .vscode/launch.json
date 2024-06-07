@@ -17,7 +17,7 @@
             "type": "debugpy",
             "request": "launch",
             "cwd": "${workspaceFolder}",
-            "program": "${workspaceFolder}/slam/run_slam.py",
+            "program": "${workspaceFolder}/spslam/slam/run_slam.py",
             "console": "integratedTerminal",
             "justMyCode": false
         },
@@ -26,7 +26,7 @@
             "type": "debugpy",
             "request": "launch",
             "cwd": "${workspaceFolder}",
-            "program": "${workspaceFolder}/slam/sfm_test.py",
+            "program": "${workspaceFolder}/spslam/slam/sfm_test.py",
             "console": "integratedTerminal",
             "justMyCode": false
         },
@@ -37,7 +37,7 @@
             "cwd": "${workspaceFolder}",
             "module": "cProfile",
             "args": [
-                "-o", "${workspaceFolder}/slam/run_slam.prof", "${workspaceFolder}/slam/run_slam.py"
+                "-o", "${workspaceFolder}/spslam/slam/run_slam.prof", "${workspaceFolder}/spslam/slam/run_slam.py"
             ],
             // "program": "${workspaceFolder}/slam/run_slam.py",
             "console": "integratedTerminal",
