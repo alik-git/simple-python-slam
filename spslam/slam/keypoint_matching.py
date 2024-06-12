@@ -2,8 +2,8 @@ import cv2
 import numpy as np
 import open3d as o3d
 
-from utils.geometry import keypoints_to_3D, transform_points_to_global
-from utils.optional_rerun_wrapper import orr_log_matches
+from spslam.utils.geometry import keypoints_to_3D, transform_points_to_global
+from spslam.utils.optional_rerun_wrapper import orr_log_matches
 
 def get_keypoint_pointcloud(keypoints, depth_image, curr_pose, intrinsics):
     keypoint_3d_points = keypoints_to_3D(keypoints, depth_image, intrinsics)

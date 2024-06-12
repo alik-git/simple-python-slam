@@ -2,7 +2,8 @@ import logging
 
 import numpy as np
 
-from utils.geometry import rotation_matrix_to_quaternion
+from spslam.utils.geometry import rotation_matrix_to_quaternion
+
 
 class OptionalReRun:
     _instance = None
